@@ -3,50 +3,50 @@
 // nvcc hello-world.cu -L /usr/local/cuda/lib -lcudart -o hello-world
 
 #include <stdio.h>
+#include <stdlib.h>
 
-#define N 16
-#define BLOCK_SIZE 16
-#define NUM_BLOCKS N/BLOCK_SIZE
+#define ARRAY_SIZE_IN_BYTES(n) (sizeof(int) * (n))
 
-#define ARRAY_SIZE N
-#define ARRAY_SIZE_IN_BYTES (sizeof(unsigned int) * (ARRAY_SIZE))
-
-/* Declare  statically four arrays of ARRAY_SIZE each */
-unsigned int cpu_block[ARRAY_SIZE];
-
-__global__ 
-void hello(int * block)
+__global__
+void hello(int * block, int n)
 {
-	const unsigned int thread_idx = (blockIdx.x * blockDim.x) + threadIdx.x;
-	block[thread_idx] = threadIdx.x;
+    const unsigned int thread_idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (thread_idx < (unsigned int)n)
+        block[thread_idx] = (int)threadIdx.x;
 }
 
-void main_sub()
+void main_sub(int n, int block_size)
 {
+    int *gpu_block;
+    int *cpu_block = (int*)malloc(sizeof(int) * n);
 
-	/* Declare pointers for GPU based params */
-	int *gpu_block;
+    for (int i = 0; i < n; i++) cpu_block[i] = -1;
 
-	cudaMalloc((void **)&gpu_block, ARRAY_SIZE_IN_BYTES);
-	cudaMemcpy( gpu_block, cpu_block, ARRAY_SIZE_IN_BYTES, cudaMemcpyHostToDevice );
+    cudaMalloc((void **)&gpu_block, ARRAY_SIZE_IN_BYTES(n));
+    cudaMemcpy(gpu_block, cpu_block, ARRAY_SIZE_IN_BYTES(n), cudaMemcpyHostToDevice);
 
-	/* Execute our kernel */
-	hello<<<NUM_BLOCKS, BLOCK_SIZE>>>(gpu_block);
+    int num_blocks = (n + block_size - 1) / block_size;
+    hello<<<num_blocks, block_size>>>(gpu_block, n);
 
-	/* Free the arrays on the GPU as now we're done with them */
-	cudaMemcpy( cpu_block, gpu_block, ARRAY_SIZE_IN_BYTES, cudaMemcpyDeviceToHost );
-	cudaFree(gpu_block);
+    cudaDeviceSynchronize();
 
-	/* Iterate through the arrays and print */
-	for(unsigned int i = 0; i < ARRAY_SIZE; i++)
-	{
-		printf("Calculated Thread: - Block: %2u\n",cpu_block[i]);
-	}
+    cudaMemcpy(cpu_block, gpu_block, ARRAY_SIZE_IN_BYTES(n), cudaMemcpyDeviceToHost);
+    cudaFree(gpu_block);
+
+    printf("\nN=%d, BLOCK_SIZE=%d, NUM_BLOCKS=%d\n", n, block_size, num_blocks);
+    for (int i = 0; i < n; i++)
+        printf("Calculated Thread: - Block: %2d\n", cpu_block[i]);
+
+    free(cpu_block);
 }
 
 int main()
 {
-	main_sub();
+    main_sub(16, 16);
+    main_sub(32, 16);
+    main_sub(64, 32);
+    main_sub(100, 32);
+    main_sub(256, 64);
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
