@@ -1,0 +1,8 @@
+Observations:
+(1) The GPU version is significantly faster than the CPU version for this large array size (n in the millions), especially in the no-branch case.
+(2) Adding conditional branching increases GPU runtime (branch version slower than no-branch), consistent with warp divergence. Threads within the same warp may take different paths and serialize execution.
+(3) The CPU timing changes less dramatically with branching, since CPUs use different mechanisms (branch prediction, out-of-order execution) than SIMT warps.
+
+Notes on configuration:
+(1) Increasing total threads from 512 to 1024 reduced GPU time in these runs.
+(2) Changing block size from 256 to 128 produced a smaller performance change, but still affected GPU runtime.

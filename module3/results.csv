@@ -1,0 +1,4 @@
+totalThreads,blockSize,numBlocks,n,gpu_nobranch_ms,cpu_nobranch_us,gpu_branch_ms,cpu_branch_us
+512,256,2,4194304,4.7872,9458,7.1909,6696
+1024,256,4,4194304,2.3841,9437,3.6680,7135
+1024,128,8,4194304,2.2796,9418,3.5328,6658
